@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import type { Food } from "@/types";
 
 export default function EditFoodPage() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function EditFoodPage() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Omit<Food, "id" | "created_at" | "household_id" | "barcode">) => {
       const { error } = await supabase
         .from("foods")
         .update(data)

@@ -11,7 +11,6 @@ import { FoodCard } from "@/components/foods/FoodCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Search, AlertTriangle } from "lucide-react";
-import type { Food } from "@/types";
 
 export default function FoodsPage() {
   const router = useRouter();

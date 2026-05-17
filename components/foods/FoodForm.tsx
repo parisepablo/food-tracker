@@ -33,7 +33,7 @@ interface FoodFormValues {
 
 interface FoodFormProps {
   initialData?: Partial<Food>;
-  onSubmit: (data: Omit<Food, "id" | "created_at" | "household_id">) => Promise<void>;
+  onSubmit: (data: Omit<Food, "id" | "created_at" | "household_id" | "barcode">) => Promise<void>;
   isLoading?: boolean;
   showOpenFoodFacts?: boolean;
   submitLabel?: string;
