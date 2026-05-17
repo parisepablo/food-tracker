@@ -46,3 +46,8 @@ export interface RecipeIngredientWithFood extends RecipeIngredient {
 export interface RecipeFull extends Recipe {
   recipe_ingredients: RecipeIngredientWithFood[];
 }
+
+// Extended ShoppingList with items
+export interface ShoppingListFull extends ShoppingList {
+  items: (ShoppingListItem & { food?: Food | null })[];
+}

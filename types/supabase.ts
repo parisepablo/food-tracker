@@ -390,6 +390,7 @@ export type Database = {
           created_at: string;
           household_id: string;
           id: string;
+          is_archived: boolean;
           meal_plan_id: string | null;
           name: string;
         };
@@ -397,6 +398,7 @@ export type Database = {
           created_at?: string;
           household_id: string;
           id?: string;
+          is_archived?: boolean;
           meal_plan_id?: string | null;
           name: string;
         };
@@ -404,6 +406,7 @@ export type Database = {
           created_at?: string;
           household_id?: string;
           id?: string;
+          is_archived?: boolean;
           meal_plan_id?: string | null;
           name?: string;
         };
