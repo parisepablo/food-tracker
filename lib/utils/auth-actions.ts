@@ -1,0 +1,76 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export async function login(formData: FormData) {
+  const supabase = createClient();
+
+  const data = {
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+  };
+
+  const { error } = await supabase.auth.signInWithPassword(data);
+
+  if (error) {
+    redirect("/login?error=" + encodeURIComponent(error.message));
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
+}
+
+export async function signup(formData: FormData) {
+  const supabase = createClient();
+
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+  const householdName = formData.get("householdName") as string;
+
+  // Sign up the user
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (authError) {
+    redirect("/register?error=" + encodeURIComponent(authError.message));
+  }
+
+  if (!authData.user) {
+    redirect("/register?error=Failed to create user");
+  }
+
+  // Create household
+  const { data: household, error: householdError } = await supabase
+    .from("households")
+    .insert({ name: householdName })
+    .select()
+    .single();
+
+  if (householdError) {
+    redirect("/register?error=" + encodeURIComponent(householdError.message));
+  }
+
+  // Add user as admin to household
+  const { error: memberError } = await supabase.from("household_members").insert({
+    household_id: household.id,
+    user_id: authData.user.id,
+    role: "admin",
+  });
+
+  if (memberError) {
+    redirect("/register?error=" + encodeURIComponent(memberError.message));
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
+}
+
+export async function logout() {
+  const supabase = createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
+}
