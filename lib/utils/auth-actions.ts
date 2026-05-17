@@ -27,10 +27,9 @@ export async function signup(formData: FormData) {
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const householdName = formData.get("householdName") as string;
 
   // Sign up the user
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  const { error: authError } = await supabase.auth.signUp({
     email,
     password,
   });
@@ -39,34 +38,52 @@ export async function signup(formData: FormData) {
     redirect("/register?error=" + encodeURIComponent(authError.message));
   }
 
-  if (!authData.user) {
-    redirect("/register?error=Failed to create user");
-  }
+  // Household will be created automatically by database trigger when user confirms email
+  redirect("/login?message=Check your email to confirm your account");
+}
 
-  // Create household
-  const { data: household, error: householdError } = await supabase
-    .from("households")
-    .insert({ name: householdName })
-    .select()
-    .single();
+export async function logout() {
+  const supabase = createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
+}
 
-  if (householdError) {
-    redirect("/register?error=" + encodeURIComponent(householdError.message));
-  }
+export async function login(formData: FormData) {
+  const supabase = createClient();
 
-  // Add user as admin to household
-  const { error: memberError } = await supabase.from("household_members").insert({
-    household_id: household.id,
-    user_id: authData.user.id,
-    role: "admin",
-  });
+  const data = {
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+  };
 
-  if (memberError) {
-    redirect("/register?error=" + encodeURIComponent(memberError.message));
+  const { error } = await supabase.auth.signInWithPassword(data);
+
+  if (error) {
+    redirect("/login?error=" + encodeURIComponent(error.message));
   }
 
   revalidatePath("/", "layout");
   redirect("/dashboard");
+}
+
+export async function signup(formData: FormData) {
+  const supabase = createClient();
+
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+
+  // Sign up the user
+  const { error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (authError) {
+    redirect("/register?error=" + encodeURIComponent(authError.message));
+  }
+
+  // Household will be created automatically by database trigger when user confirms email
+  redirect("/login?message=Check your email to confirm your account");
 }
 
 export async function logout() {

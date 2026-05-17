@@ -8,7 +8,7 @@ import { login } from "@/lib/utils/auth-actions";
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; message?: string };
 }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
@@ -24,6 +24,11 @@ export default function LoginPage({
             {searchParams.error && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {searchParams.error}
+              </div>
+            )}
+            {searchParams.message && (
+              <div className="rounded-md bg-green-500/15 p-3 text-sm text-green-600">
+                {searchParams.message}
               </div>
             )}
             <div className="space-y-2">

@@ -8,7 +8,7 @@ import { signup } from "@/lib/utils/auth-actions";
 export default function RegisterPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; message?: string };
 }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
@@ -16,7 +16,7 @@ export default function RegisterPage({
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
           <CardDescription>
-            Enter your details to create your household account
+            Enter your details to create your account
           </CardDescription>
         </CardHeader>
         <form action={signup}>
@@ -26,16 +26,11 @@ export default function RegisterPage({
                 {searchParams.error}
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="householdName">Household Name</Label>
-              <Input
-                id="householdName"
-                name="householdName"
-                type="text"
-                placeholder="My Family"
-                required
-              />
-            </div>
+            {searchParams.message && (
+              <div className="rounded-md bg-green-500/15 p-3 text-sm text-green-600">
+                {searchParams.message}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
