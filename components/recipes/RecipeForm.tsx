@@ -89,18 +89,30 @@ export function RecipeForm({ recipe, onSuccess }: RecipeFormProps) {
     }
 
     if (!food) {
-      // Create new food
+      // Create new food - get household_id first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: memberData } = await supabase
+        .from("household_members")
+        .select("household_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!memberData) return;
+
       const { data, error } = await supabase
         .from("foods")
         .insert({
-          barcode: foodData.barcode,
+          barcode: foodData.barcode ?? null,
           name: foodData.name || "Sin nombre",
-          brand: foodData.brand,
+          brand: foodData.brand ?? null,
           calories_per_100g: foodData.calories_per_100g || 0,
           protein_per_100g: foodData.protein_per_100g || 0,
           carbs_per_100g: foodData.carbs_per_100g || 0,
           fat_per_100g: foodData.fat_per_100g || 0,
-          image_url: foodData.image_url,
+          image_url: foodData.image_url ?? null,
+          household_id: memberData.household_id,
         })
         .select()
         .single();
