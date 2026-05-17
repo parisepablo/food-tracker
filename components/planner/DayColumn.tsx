@@ -1,32 +1,40 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { MealSlot } from "./MealSlot";
 import type { MealType } from "@/types";
 
 interface DayColumnProps {
-  date: Date;
+  date: string;
   activeMealTypes: MealType[];
-  onAddMeal?: (date: Date, mealType: MealType) => void;
-  onRemoveMeal?: (entryId: string) => void;
+  entries: Array<{
+    date: string;
+    meal_type: MealType;
+    recipe_id: string;
+    recipe_name: string;
+    calories_per_serving?: number;
+    image_url?: string | null;
+  }>;
+  onAssign: (date: string, mealType: MealType) => void;
+  onRemove: (date: string, mealType: MealType) => void;
 }
 
-const mealTypeLabels: Record<MealType, string> = {
-  breakfast: "Desayuno",
-  lunch: "Almuerzo",
-  dinner: "Cena",
-  snack: "Merienda",
-};
-
-const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-export function DayColumn({ date, activeMealTypes, onAddMeal }: DayColumnProps) {
-  const dayName = dayNames[date.getDay()];
-  const dayNumber = date.getDate();
-  const monthName = monthNames[date.getMonth()];
+export function DayColumn({ date, activeMealTypes, entries, onAssign, onRemove }: DayColumnProps) {
+  const dateObj = new Date(date);
+  // Adjust for Monday start (getDay returns 0 for Sunday)
+  const dayIndex = (dateObj.getDay() + 6) % 7;
+  const dayName = dayNames[dayIndex];
+  const dayNumber = dateObj.getDate();
+  const monthName = monthNames[dateObj.getMonth()];
 
-  const isToday = new Date().toDateString() === date.toDateString();
+  const isToday = new Date().toDateString() === dateObj.toDateString();
+
+  const getEntryForMealType = (mealType: MealType) => {
+    return entries.find((e) => e.date === date && e.meal_type === mealType);
+  };
 
   return (
     <Card className={`h-full ${isToday ? "border-primary" : ""}`}>
@@ -45,24 +53,22 @@ export function DayColumn({ date, activeMealTypes, onAddMeal }: DayColumnProps) 
             No hay comidas activas
           </p>
         ) : (
-          activeMealTypes.map((mealType) => (
-            <div
-              key={mealType}
-              className="rounded-md border border-dashed border-muted-foreground/25 p-2"
-            >
-              <div className="mb-1 text-xs font-medium text-muted-foreground">
-                {mealTypeLabels[mealType]}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto w-full justify-start py-1 text-xs"
-                onClick={() => onAddMeal?.(date, mealType)}
-              >
-                + Agregar
-              </Button>
-            </div>
-          ))
+          activeMealTypes.map((mealType) => {
+            const entry = getEntryForMealType(mealType);
+            return (
+              <MealSlot
+                key={mealType}
+                date={date}
+                mealType={mealType}
+                recipeName={entry?.recipe_name}
+                caloriesPerServing={entry?.calories_per_serving}
+                imageUrl={entry?.image_url}
+                onAssign={() => onAssign(date, mealType)}
+                onRemove={() => onRemove(date, mealType)}
+                compact
+              />
+            );
+          })
         )}
       </CardContent>
     </Card>
