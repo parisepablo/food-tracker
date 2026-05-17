@@ -51,3 +51,19 @@ export interface RecipeFull extends Recipe {
 export interface ShoppingListFull extends ShoppingList {
   items: (ShoppingListItem & { food?: Food | null })[];
 }
+
+// Macros interface
+export interface Macros {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+// Nutrition goal
+export type NutritionGoal = Tables<"nutrition_goals">;
+
+// Extended MealPlanEntry with recipe
+export interface MealPlanEntryWithRecipe extends MealPlanEntry {
+  recipes: RecipeWithIngredients;
+}

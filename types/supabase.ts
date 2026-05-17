@@ -250,6 +250,54 @@ export type Database = {
           }
         ];
       };
+      nutrition_goals: {
+        Row: {
+          calories_goal: number | null;
+          carbs_goal: number | null;
+          fat_goal: number | null;
+          household_id: string;
+          id: string;
+          protein_goal: number | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          calories_goal?: number | null;
+          carbs_goal?: number | null;
+          fat_goal?: number | null;
+          household_id: string;
+          id?: string;
+          protein_goal?: number | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          calories_goal?: number | null;
+          carbs_goal?: number | null;
+          fat_goal?: number | null;
+          household_id?: string;
+          id?: string;
+          protein_goal?: number | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "nutrition_goals_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "nutrition_goals_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       recipe_ingredients: {
         Row: {
           food_id: string;
