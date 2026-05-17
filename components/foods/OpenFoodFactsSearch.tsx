@@ -89,8 +89,8 @@ export function OpenFoodFactsSearch({ onSelect }: OpenFoodFactsSearchProps) {
         <div className="absolute z-50 mt-1 max-h-80 w-full overflow-auto rounded-md border bg-popover shadow-md">
           {isLoading ? (
             <div className="space-y-2 p-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-12 w-full" />
               ))}
             </div>
           ) : (

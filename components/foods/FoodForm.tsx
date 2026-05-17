@@ -8,6 +8,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { OpenFoodFactsSearch } from "@/components/foods/OpenFoodFactsSearch";
 import type { Food } from "@/types";
 
+interface OpenFoodFactsProduct {
+  code: string;
+  product_name?: string;
+  brands?: string;
+  image_url?: string;
+  nutriments?: {
+    "energy-kcal_100g"?: number;
+    proteins_100g?: number;
+    carbohydrates_100g?: number;
+    fat_100g?: number;
+  };
+}
+
 interface FoodFormValues {
   name: string;
   brand: string;
@@ -98,7 +111,7 @@ export function FoodForm({
     });
   };
 
-  const handleOpenFoodFactsSelect = (product: any) => {
+  const handleOpenFoodFactsSelect = (product: OpenFoodFactsProduct) => {
     setValues({
       name: product.product_name || "",
       brand: product.brands || "",
