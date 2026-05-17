@@ -12,17 +12,19 @@ import {
   ShoppingCart,
   Settings,
   Menu,
+  UtensilsCrossed,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Planner", href: "/planner", icon: Calendar },
-  { name: "Recipes", href: "/recipes", icon: ChefHat },
-  { name: "Shopping", href: "/shopping", icon: ShoppingCart },
+  { name: "Recetas", href: "/recipes", icon: ChefHat },
+  { name: "Alimentos", href: "/foods", icon: UtensilsCrossed },
+  { name: "Lista de compras", href: "/shopping", icon: ShoppingCart },
 ];
 
 const settingsNavigation = [
-  { name: "Settings", href: "/settings/household", icon: Settings },
+  { name: "Configuración", href: "/settings/household", icon: Settings },
 ];
 
 function NavItem({

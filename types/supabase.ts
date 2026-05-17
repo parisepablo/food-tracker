@@ -17,6 +17,7 @@ export type Database = {
           carbs_per_100g: number;
           created_at: string;
           fat_per_100g: number;
+          household_id: string;
           id: string;
           image_url: string | null;
           name: string;
@@ -29,6 +30,7 @@ export type Database = {
           carbs_per_100g: number;
           created_at?: string;
           fat_per_100g: number;
+          household_id: string;
           id?: string;
           image_url?: string | null;
           name: string;
@@ -41,12 +43,21 @@ export type Database = {
           carbs_per_100g?: number;
           created_at?: string;
           fat_per_100g?: number;
+          household_id?: string;
           id?: string;
           image_url?: string | null;
           name?: string;
           protein_per_100g?: number;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "foods_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       ingredient_categories: {
         Row: {
