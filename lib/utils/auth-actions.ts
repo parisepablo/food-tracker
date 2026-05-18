@@ -12,6 +12,8 @@ export async function login(formData: FormData) {
     password: formData.get("password") as string,
   };
 
+  const redirectTo = formData.get("redirect") as string;
+
   const { error } = await supabase.auth.signInWithPassword(data);
 
   if (error) {
@@ -19,7 +21,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect(redirectTo || "/dashboard");
 }
 
 export async function signup(formData: FormData) {
@@ -27,11 +29,17 @@ export async function signup(formData: FormData) {
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const redirectTo = formData.get("redirect") as string;
 
   // Sign up the user
   const { error: authError } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: redirectTo
+        ? `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}${redirectTo}`
+        : undefined,
+    },
   });
 
   if (authError) {
@@ -39,7 +47,11 @@ export async function signup(formData: FormData) {
   }
 
   // Household will be created automatically by database trigger when user confirms email
-  redirect("/login?message=Check your email to confirm your account");
+  const message = redirectTo
+    ? "Revisá tu email para confirmar tu cuenta. Después de confirmar, serás redirigido para aceptar la invitación."
+    : "Revisá tu email para confirmar tu cuenta";
+
+  redirect(`/login?message=${encodeURIComponent(message)}`);
 }
 
 export async function logout() {

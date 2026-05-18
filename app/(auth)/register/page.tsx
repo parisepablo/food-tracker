@@ -8,15 +8,15 @@ import { signup } from "@/lib/utils/auth-actions";
 export default function RegisterPage({
   searchParams,
 }: {
-  searchParams: { error?: string; message?: string };
+  searchParams: { error?: string; message?: string; redirect?: string };
 }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+          <CardTitle className="text-2xl font-bold">Crear cuenta</CardTitle>
           <CardDescription>
-            Enter your details to create your account
+            Ingresa tus datos para crear tu cuenta
           </CardDescription>
         </CardHeader>
         <form action={signup}>
@@ -31,6 +31,7 @@ export default function RegisterPage({
                 {searchParams.message}
               </div>
             )}
+            <input type="hidden" name="redirect" value={searchParams.redirect || ""} />
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -42,7 +43,7 @@ export default function RegisterPage({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 name="password"
@@ -53,15 +54,15 @@ export default function RegisterPage({
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full">
-              Create account
+              Crear cuenta
             </Button>
             <p className="text-sm text-muted-foreground">
-              Already have an account?{" "}
+              ¿Ya tenés una cuenta?{" "}
               <Link
-                href="/login"
+                href={`/login${searchParams.redirect ? `?redirect=${encodeURIComponent(searchParams.redirect)}` : ""}`}
                 className="text-primary underline-offset-4 hover:underline"
               >
-                Sign in
+                Iniciar sesión
               </Link>
             </p>
           </CardFooter>

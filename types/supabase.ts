@@ -187,6 +187,54 @@ export type Database = {
           }
         ];
       };
+      household_invitations: {
+        Row: {
+          created_at: string;
+          email: string;
+          expires_at: string;
+          household_id: string;
+          id: string;
+          invited_by: string;
+          status: string;
+          token: string;
+        };
+        Insert: {
+          created_at?: string;
+          email: string;
+          expires_at?: string;
+          household_id: string;
+          id?: string;
+          invited_by: string;
+          status?: string;
+          token?: string;
+        };
+        Update: {
+          created_at?: string;
+          email?: string;
+          expires_at?: string;
+          household_id?: string;
+          id?: string;
+          invited_by?: string;
+          status?: string;
+          token?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "household_invitations_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "household_invitations_invited_by_fkey";
+            columns: ["invited_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       meal_plan_entries: {
         Row: {
           created_at: string;

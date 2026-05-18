@@ -74,3 +74,6 @@ export type Pantry = Tables<"pantry">;
 export interface PantryWithFood extends Pantry {
   food?: Food;
 }
+
+// Household invitations
+export type HouseholdInvitation = Tables<"household_invitations">;
