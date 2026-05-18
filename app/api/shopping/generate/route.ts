@@ -162,6 +162,50 @@ export async function POST(request: NextRequest) {
       });
     });
 
+    // Fetch pantry data for the household
+    const { data: pantryItems } = await supabase
+      .from("pantry")
+      .select("food_id, quantity_grams")
+      .eq("household_id", householdId);
+
+    const pantryMap = new Map<string, number>();
+    pantryItems?.forEach((item) => {
+      pantryMap.set(item.food_id, item.quantity_grams);
+    });
+
+    // Calculate net quantities and filter items
+    const itemsToInsert: Array<{
+      shopping_list_id: string;
+      food_id: string;
+      name: string;
+      quantity_grams: number;
+      category: string | null;
+      is_checked: boolean;
+      is_manual: boolean;
+      quantity_in_stock_grams: number;
+      total_quantity_needed_grams: number;
+    }> = [];
+
+    for (const [foodId, ingredient] of ingredientMap.entries()) {
+      const pantryQuantity = pantryMap.get(foodId) || 0;
+      const netQuantity = ingredient.total_quantity_grams - pantryQuantity;
+
+      // Only add item if net quantity > 0 (household needs more than they have)
+      if (netQuantity > 0) {
+        itemsToInsert.push({
+          shopping_list_id: "", // Will be set after shopping list creation
+          food_id: foodId,
+          name: ingredient.name,
+          quantity_grams: Math.round(netQuantity),
+          category: ingredient.category,
+          is_checked: false,
+          is_manual: false,
+          quantity_in_stock_grams: Math.round(pantryQuantity),
+          total_quantity_needed_grams: Math.round(ingredient.total_quantity_grams),
+        });
+      }
+    }
+
     // Create shopping list
     const weekStart = new Date().toISOString().split("T")[0];
     const { data: shoppingList, error: listError } = await supabase
@@ -182,32 +226,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert shopping list items
-    const itemsToInsert = Array.from(ingredientMap.values()).map((ingredient) => ({
+    // Set shopping_list_id for all items
+    const finalItems = itemsToInsert.map((item) => ({
+      ...item,
       shopping_list_id: shoppingList.id,
-      food_id: ingredient.food_id,
-      name: ingredient.name,
-      quantity_grams: ingredient.total_quantity_grams,
-      category: ingredient.category,
-      is_checked: false,
-      is_manual: false,
     }));
 
-    const { error: itemsError } = await supabase
-      .from("shopping_list_items")
-      .insert(itemsToInsert);
+    // Insert shopping list items
+    if (finalItems.length > 0) {
+      const { error: itemsError } = await supabase
+        .from("shopping_list_items")
+        .insert(finalItems);
 
-    if (itemsError) {
-      return NextResponse.json(
-        { error: "Failed to create shopping list items" },
-        { status: 500 }
-      );
+      if (itemsError) {
+        return NextResponse.json(
+          { error: "Failed to create shopping list items" },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({
       success: true,
       shopping_list_id: shoppingList.id,
-      items_count: itemsToInsert.length,
+      items_count: finalItems.length,
+      items_skipped: ingredientMap.size - finalItems.length,
     });
   } catch (error) {
     console.error("Error generating shopping list:", error);

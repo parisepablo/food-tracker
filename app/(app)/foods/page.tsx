@@ -11,6 +11,7 @@ import { FoodCard } from "@/components/foods/FoodCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, Search, AlertTriangle } from "lucide-react";
+import type { Pantry } from "@/types";
 
 export default function FoodsPage() {
   const router = useRouter();
@@ -40,6 +41,35 @@ export default function FoodsPage() {
         .order("name");
 
       return foods || [];
+    },
+  });
+
+  // Fetch pantry data
+  const { data: pantryData } = useQuery({
+    queryKey: ["household-pantry"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return new Map<string, number>();
+
+      const { data: member } = await supabase
+        .from("household_members")
+        .select("household_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!member) return new Map<string, number>();
+
+      const { data: pantryItems } = await supabase
+        .from("pantry")
+        .select("food_id, quantity_grams")
+        .eq("household_id", member.household_id);
+
+      const pantryMap = new Map<string, number>();
+      pantryItems?.forEach((item: Pick<Pantry, "food_id" | "quantity_grams">) => {
+        pantryMap.set(item.food_id, item.quantity_grams);
+      });
+
+      return pantryMap;
     },
   });
 
@@ -73,6 +103,55 @@ export default function FoodsPage() {
     enabled: !!foods,
   });
 
+  // Update stock mutation
+  const updateStockMutation = useMutation({
+    mutationFn: async ({ foodId, quantityGrams }: { foodId: string; quantityGrams: number }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: member } = await supabase
+        .from("household_members")
+        .select("household_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!member) throw new Error("No household");
+
+      const { error } = await supabase
+        .from("pantry")
+        .upsert(
+          {
+            household_id: member.household_id,
+            food_id: foodId,
+            quantity_grams: quantityGrams,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "household_id,food_id" }
+        );
+
+      if (error) throw error;
+    },
+    onMutate: async ({ foodId, quantityGrams }) => {
+      await queryClient.cancelQueries({ queryKey: ["household-pantry"] });
+      const previous = queryClient.getQueryData(["household-pantry"]);
+      queryClient.setQueryData(["household-pantry"], (old: Map<string, number> | undefined) => {
+        if (!old) return old;
+        const newMap = new Map(old);
+        newMap.set(foodId, quantityGrams);
+        return newMap;
+      });
+      return { previous };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["household-pantry"], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["household-pantry"] });
+    },
+  });
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (foodId: string) => {
@@ -86,6 +165,7 @@ export default function FoodsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["household-foods"] });
       queryClient.invalidateQueries({ queryKey: ["foods-recipe-usage"] });
+      queryClient.invalidateQueries({ queryKey: ["household-pantry"] });
     },
   });
 
@@ -106,6 +186,11 @@ export default function FoodsPage() {
   // Handle edit
   const handleEdit = (foodId: string) => {
     router.push(`/foods/${foodId}/edit`);
+  };
+
+  // Handle stock update
+  const handleUpdateStock = (foodId: string, quantityGrams: number) => {
+    updateStockMutation.mutate({ foodId, quantityGrams });
   };
 
   // Filter foods by search query
@@ -165,9 +250,12 @@ export default function FoodsPage() {
             <FoodCard
               key={food.id}
               food={food}
+              stockGrams={pantryData?.get(food.id) || 0}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onUpdateStock={handleUpdateStock}
               isUsedInRecipes={recipeUsage?.get(food.id)}
+              isUpdatingStock={updateStockMutation.isPending}
             />
           ))}
         </div>

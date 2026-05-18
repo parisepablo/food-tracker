@@ -67,3 +67,10 @@ export type NutritionGoal = Tables<"nutrition_goals">;
 export interface MealPlanEntryWithRecipe extends MealPlanEntry {
   recipes: RecipeWithIngredients;
 }
+
+// Pantry
+export type Pantry = Tables<"pantry">;
+
+export interface PantryWithFood extends Pantry {
+  food?: Food;
+}

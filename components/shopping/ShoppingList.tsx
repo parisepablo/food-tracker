@@ -144,10 +144,62 @@ export function ShoppingList() {
     },
   });
 
-  // Archive list
+  // Archive list - updates pantry for checked items
   const archiveListMutation = useMutation({
     mutationFn: async () => {
       if (!shoppingList) return;
+
+      // Get current user and household
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: memberData } = await supabase
+        .from("household_members")
+        .select("household_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!memberData) throw new Error("No household");
+
+      // Get checked items that have a food_id (non-manual items)
+      const checkedItems = shoppingList.items?.filter(
+        (item) => item.is_checked && item.food_id && !item.is_manual
+      ) || [];
+
+      // Upsert pantry for each checked item
+      for (const item of checkedItems) {
+        if (!item.food_id) continue;
+
+        // Check if pantry record exists
+        const { data: existingPantry } = await supabase
+          .from("pantry")
+          .select("id, quantity_grams")
+          .eq("household_id", memberData.household_id)
+          .eq("food_id", item.food_id)
+          .single();
+
+        if (existingPantry) {
+          // Update existing record - add to stock
+          await supabase
+            .from("pantry")
+            .update({
+              quantity_grams: existingPantry.quantity_grams + (item.quantity_grams || 0),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingPantry.id);
+        } else {
+          // Create new record
+          await supabase
+            .from("pantry")
+            .insert({
+              household_id: memberData.household_id,
+              food_id: item.food_id,
+              quantity_grams: item.quantity_grams || 0,
+            });
+        }
+      }
+
+      // Archive the shopping list
       const { error } = await supabase
         .from("shopping_lists")
         .update({ is_archived: true })
@@ -157,6 +209,7 @@ export function ShoppingList() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["active-shopping-list"] });
+      queryClient.invalidateQueries({ queryKey: ["household-pantry"] });
     },
   });
 

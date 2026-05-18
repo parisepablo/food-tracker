@@ -22,6 +22,13 @@ const categoryLabels: Record<string, string> = {
 };
 
 export function ShoppingItem({ item, onToggle, onDelete }: ShoppingItemProps) {
+  const hasStockInfo =
+    item.quantity_in_stock_grams !== null &&
+    item.quantity_in_stock_grams !== undefined &&
+    item.quantity_in_stock_grams > 0 &&
+    item.total_quantity_needed_grams !== null &&
+    item.total_quantity_needed_grams !== undefined;
+
   return (
     <div
       className={`flex items-center justify-between rounded-lg border p-3 ${
@@ -37,6 +44,12 @@ export function ShoppingItem({ item, onToggle, onDelete }: ShoppingItemProps) {
           <p className={`font-medium ${item.is_checked ? "line-through" : ""}`}>
             {item.name}
           </p>
+          {hasStockInfo && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Tenés {Math.round(item.quantity_in_stock_grams!)}g en casa · Necesitás{" "}
+              {Math.round(item.total_quantity_needed_grams!)}g en total
+            </p>
+          )}
           <div className="flex items-center gap-2 mt-1">
             {item.quantity_grams && (
               <span className="text-sm text-muted-foreground">

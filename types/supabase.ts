@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      pantry: {
+        Row: {
+          food_id: string;
+          household_id: string;
+          id: string;
+          quantity_grams: number;
+          updated_at: string;
+        };
+        Insert: {
+          food_id: string;
+          household_id: string;
+          id?: string;
+          quantity_grams?: number;
+          updated_at?: string;
+        };
+        Update: {
+          food_id?: string;
+          household_id?: string;
+          id?: string;
+          quantity_grams?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pantry_food_id_fkey";
+            columns: ["food_id"];
+            isOneToOne: false;
+            referencedRelation: "foods";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pantry_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       foods: {
         Row: {
           barcode: string | null;
@@ -403,7 +442,9 @@ export type Database = {
           is_manual: boolean;
           name: string;
           quantity_grams: number | null;
+          quantity_in_stock_grams: number | null;
           shopping_list_id: string;
+          total_quantity_needed_grams: number | null;
         };
         Insert: {
           category?: string | null;
@@ -414,7 +455,9 @@ export type Database = {
           is_manual?: boolean;
           name: string;
           quantity_grams?: number | null;
+          quantity_in_stock_grams?: number | null;
           shopping_list_id: string;
+          total_quantity_needed_grams?: number | null;
         };
         Update: {
           category?: string | null;
@@ -425,7 +468,9 @@ export type Database = {
           is_manual?: boolean;
           name?: string;
           quantity_grams?: number | null;
+          quantity_in_stock_grams?: number | null;
           shopping_list_id?: string;
+          total_quantity_needed_grams?: number | null;
         };
         Relationships: [
           {
