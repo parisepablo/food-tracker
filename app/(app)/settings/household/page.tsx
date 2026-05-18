@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useHousehold } from "@/lib/hooks/useHousehold";
 import { useUser } from "@/lib/hooks/useUser";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +28,9 @@ export default function HouseholdSettingsPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
+  // Household name state
+  const [householdName, setHouseholdName] = useState("");
+
   // Nutrition goals state
   const [goals, setGoals] = useState({
     calories_goal: "",
@@ -36,15 +39,23 @@ export default function HouseholdSettingsPage() {
     fat_goal: "",
   });
 
-  const updateMealTypesMutation = useMutation({
-    mutationFn: async (mealTypes: MealType[]) => {
-      if (!householdData?.household.id) throw new Error("No household");
-      
+  // Sync household name when data loads
+  useEffect(() => {
+    if (householdData?.household?.name) {
+      setHouseholdName(householdData.household.name);
+    }
+  }, [householdData?.household?.name]);
+
+  // Save household name mutation
+  const updateHouseholdNameMutation = useMutation({
+    mutationFn: async () => {
+      if (!householdData?.household?.id) throw new Error("No household");
+
       const { error } = await supabase
         .from("households")
-        .update({ active_meal_types: mealTypes })
+        .update({ name: householdName })
         .eq("id", householdData.household.id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -52,13 +63,29 @@ export default function HouseholdSettingsPage() {
     },
   });
 
-  const activeMealTypes = (householdData?.household.active_meal_types as MealType[]) || allMealTypes;
+  const updateMealTypesMutation = useMutation({
+    mutationFn: async (mealTypes: MealType[]) => {
+      if (!householdData?.household?.id) throw new Error("No household");
+
+      const { error } = await supabase
+        .from("households")
+        .update({ active_meal_types: mealTypes })
+        .eq("id", householdData.household.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["household"] });
+    },
+  });
+
+  const activeMealTypes = (householdData?.household?.active_meal_types as MealType[]) || allMealTypes;
 
   // Fetch current user's nutrition goals
   const { data: userGoals } = useQuery({
     queryKey: ["user-nutrition-goals", userData?.id],
     queryFn: async () => {
-      if (!userData?.id || !householdData?.household.id) return null;
+      if (!userData?.id || !householdData?.household?.id) return null;
 
       const { data, error } = await supabase
         .from("nutrition_goals")
@@ -70,13 +97,25 @@ export default function HouseholdSettingsPage() {
       if (error) return null;
       return data as NutritionGoal;
     },
-    enabled: !!userData?.id && !!householdData?.household.id && !userLoading,
+    enabled: !!userData?.id && !!householdData?.household?.id && !userLoading,
   });
+
+  // Sync nutrition goals when data loads
+  useEffect(() => {
+    if (userGoals) {
+      setGoals({
+        calories_goal: userGoals.calories_goal?.toString() || "",
+        protein_goal: userGoals.protein_goal?.toString() || "",
+        carbs_goal: userGoals.carbs_goal?.toString() || "",
+        fat_goal: userGoals.fat_goal?.toString() || "",
+      });
+    }
+  }, [userGoals]);
 
   // Save nutrition goals
   const saveGoalsMutation = useMutation({
     mutationFn: async () => {
-      if (!userData?.id || !householdData?.household.id) throw new Error("Missing user or household");
+      if (!userData?.id || !householdData?.household?.id) throw new Error("Missing user or household");
 
       const goalsData = {
         household_id: householdData.household.id,
@@ -113,29 +152,27 @@ export default function HouseholdSettingsPage() {
 
   const handleMealTypeChange = (mealType: MealType, checked: boolean) => {
     let newMealTypes: MealType[];
-    
+
     if (checked) {
-      // Add meal type
       newMealTypes = [...activeMealTypes, mealType];
     } else {
-      // Remove meal type, but prevent removing the last one
       if (activeMealTypes.length <= 1) {
-        return; // Prevent unchecking the last active meal type
+        return;
       }
       newMealTypes = activeMealTypes.filter((t) => t !== mealType);
     }
-    
+
     updateMealTypesMutation.mutate(newMealTypes);
   };
 
-  if (isLoading) {
+  if (isLoading || userLoading) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Configuración del hogar</h1>
           <p className="text-muted-foreground">Administra los miembros y preferencias de tu hogar</p>
         </div>
-        
+
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -144,27 +181,42 @@ export default function HouseholdSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
               <Button className="w-full" disabled>Guardar cambios</Button>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
-              <CardTitle>Miembros</CardTitle>
-              <CardDescription>Administra los miembros del hogar</CardDescription>
+              <CardTitle>Comidas activas</CardTitle>
+              <CardDescription>Selecciona qué tipos de comidas quieres planificar</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <Skeleton className="h-10 w-48" />
-                  <Skeleton className="h-8 w-20" />
-                </div>
-              ))}
-              <Button variant="outline" className="w-full" disabled>Invitar miembro</Button>
+            <CardContent>
+              <div className="flex flex-wrap gap-6">
+                {allMealTypes.map((mealType) => (
+                  <div key={mealType} className="flex items-center space-x-2">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Objetivos nutricionales</CardTitle>
+            <CardDescription>Configurá tus objetivos diarios de calorías y macros</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+            <Skeleton className="h-10 w-40 mt-4" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -175,7 +227,7 @@ export default function HouseholdSettingsPage() {
         <h1 className="text-3xl font-bold">Configuración del hogar</h1>
         <p className="text-muted-foreground">Administra los miembros y preferencias de tu hogar</p>
       </div>
-      
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -183,29 +235,27 @@ export default function HouseholdSettingsPage() {
             <CardDescription>Actualiza los detalles de tu hogar</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Button className="w-full">Guardar cambios</Button>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Miembros</CardTitle>
-            <CardDescription>Administra los miembros del hogar</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-8 w-20" />
-              </div>
-            ))}
-            <Button variant="outline" className="w-full">Invitar miembro</Button>
+            <div>
+              <Label htmlFor="householdName">Nombre del hogar</Label>
+              <Input
+                id="householdName"
+                value={householdName}
+                onChange={(e) => setHouseholdName(e.target.value)}
+                placeholder="Mi hogar"
+                className="mt-1"
+              />
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => updateHouseholdNameMutation.mutate()}
+              disabled={updateHouseholdNameMutation.isPending}
+            >
+              {updateHouseholdNameMutation.isPending ? "Guardando..." : "Guardar cambios"}
+            </Button>
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle>Comidas activas</CardTitle>
             <CardDescription>
@@ -217,14 +267,14 @@ export default function HouseholdSettingsPage() {
               {allMealTypes.map((mealType) => {
                 const isChecked = activeMealTypes.includes(mealType);
                 const isDisabled = isChecked && activeMealTypes.length === 1;
-                
+
                 return (
                   <div key={mealType} className="flex items-center space-x-2">
                     <Checkbox
                       id={`meal-type-${mealType}`}
                       checked={isChecked}
                       disabled={isDisabled || updateMealTypesMutation.isPending}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         handleMealTypeChange(mealType, checked as boolean)
                       }
                     />
