@@ -36,7 +36,7 @@ export default function HouseholdSettingsPage() {
   // Invite state
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteError, setInviteError] = useState("");
-  const [inviteSuccess, setInviteSuccess] = useState("");
+  const [invitationLink, setInvitationLink] = useState("");
 
   // Nutrition goals state
   const [goals, setGoals] = useState({
@@ -146,16 +146,14 @@ export default function HouseholdSettingsPage() {
 
       return data;
     },
-    onSuccess: () => {
-      setInviteEmail("");
+    onSuccess: (data) => {
       setInviteError("");
-      setInviteSuccess("Invitación enviada correctamente");
+      setInvitationLink(data.invitation_link || "");
       queryClient.invalidateQueries({ queryKey: ["household-invitations"] });
-      setTimeout(() => setInviteSuccess(""), 3000);
     },
     onError: (error: Error) => {
       setInviteError(error.message);
-      setInviteSuccess("");
+      setInvitationLink("");
     },
   });
 
@@ -178,8 +176,17 @@ export default function HouseholdSettingsPage() {
 
   const handleSendInvite = () => {
     setInviteError("");
-    setInviteSuccess("");
+    setInvitationLink("");
     sendInviteMutation.mutate(inviteEmail);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(invitationLink);
+  };
+
+  const handleDismissLink = () => {
+    setInvitationLink("");
+    setInviteEmail("");
   };
 
   // Fetch current user's nutrition goals
@@ -506,31 +513,52 @@ export default function HouseholdSettingsPage() {
             {householdData?.role === "admin" && (
               <div>
                 <h3 className="text-sm font-medium mb-3">Invitar nuevo miembro</h3>
-                <div className="flex gap-2">
-                  <Input
-                    type="email"
-                    placeholder="email@ejemplo.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={handleSendInvite}
-                    disabled={sendInviteMutation.isPending || !inviteEmail}
-                  >
-                    {sendInviteMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <UserPlus className="h-4 w-4 mr-2" />
+                {invitationLink ? (
+                  <div className="space-y-3 rounded-lg border p-4 bg-muted/50">
+                    <p className="text-sm font-medium">
+                      Invitación creada. Compartí este link con {inviteEmail}:
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        value={invitationLink}
+                        readOnly
+                        className="flex-1 font-mono text-xs"
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                      <Button onClick={handleCopyLink} variant="outline">
+                        Copiar link
+                      </Button>
+                    </div>
+                    <Button onClick={handleDismissLink} variant="ghost" size="sm" className="w-full">
+                      Listo
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <Input
+                        type="email"
+                        placeholder="email@ejemplo.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={handleSendInvite}
+                        disabled={sendInviteMutation.isPending || !inviteEmail}
+                      >
+                        {sendInviteMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <UserPlus className="h-4 w-4 mr-2" />
+                        )}
+                        Crear invitación
+                      </Button>
+                    </div>
+                    {inviteError && (
+                      <p className="text-sm text-destructive mt-2">{inviteError}</p>
                     )}
-                    Enviar invitación
-                  </Button>
-                </div>
-                {inviteError && (
-                  <p className="text-sm text-destructive mt-2">{inviteError}</p>
-                )}
-                {inviteSuccess && (
-                  <p className="text-sm text-green-600 mt-2">{inviteSuccess}</p>
+                  </>
                 )}
               </div>
             )}

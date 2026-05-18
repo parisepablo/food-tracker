@@ -111,25 +111,11 @@ export async function POST(request: NextRequest) {
 
     // Build invitation URL
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const inviteUrl = `${siteUrl}/invite/accept?token=${invitation.token}`;
-
-    // Send invitation email via service role client
-    const { error: emailError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email: email.toLowerCase(),
-      options: {
-        redirectTo: inviteUrl,
-      },
-    });
-
-    if (emailError) {
-      console.error("Email send error:", JSON.stringify(emailError, null, 2));
-      // Don't fail the request - invitation was created, user can use the link directly
-    }
+    const invitationLink = `${siteUrl}/invite/accept?token=${invitation.token}`;
 
     return NextResponse.json({
       success: true,
-      message: "Invitación enviada correctamente",
+      invitation_link: invitationLink,
     });
   } catch (error) {
     console.error("Error in invite route:", error instanceof Error ? error.message : error);
