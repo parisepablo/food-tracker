@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
 
-    // Get current user
+    // Get current user (cookie-based client)
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's household and verify they are admin
+    // Verify user is admin using cookie-based client
     const { data: memberData, error: memberError } = await supabase
       .from("household_members")
       .select("household_id, role")
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (memberError || !memberData) {
+      console.error("Member lookup error:", memberError);
       return NextResponse.json(
         { error: "No se encontró un hogar" },
         { status: 400 }
@@ -41,24 +43,29 @@ export async function POST(request: NextRequest) {
 
     if (memberData.role !== "admin") {
       return NextResponse.json(
-        { error: "Solo los administradores pueden enviar invitaciones" },
+        { error: "No autorizado" },
         { status: 403 }
       );
     }
 
     const householdId = memberData.household_id;
 
-    // Check if the email is already a member by looking up the user
-    const { data: invitedUser } = await supabase
+    // Use service role client for inserts and admin operations
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Check if the email is already a member
+    const { data: existingMembers } = await supabaseAdmin
       .from("household_members")
-      .select("id, users:user_id(email)")
+      .select("user_id")
       .eq("household_id", householdId);
 
-    // Check if any existing member has this email
-    if (invitedUser) {
-      for (const member of invitedUser) {
-        const memberEmail = (member as unknown as { users: { email: string } }).users?.email;
-        if (memberEmail === email.toLowerCase()) {
+    if (existingMembers && existingMembers.length > 0) {
+      for (const member of existingMembers) {
+        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
+        if (userData?.user?.email?.toLowerCase() === email.toLowerCase()) {
           return NextResponse.json(
             { error: "Este usuario ya es miembro del hogar" },
             { status: 400 }
@@ -68,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if there's already a pending invitation for this email
-    const { data: existingInvitation } = await supabase
+    const { data: existingInvitation } = await supabaseAdmin
       .from("household_invitations")
       .select("id")
       .eq("household_id", householdId)
@@ -83,8 +90,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the invitation
-    const { data: invitation, error: inviteError } = await supabase
+    // Create the invitation using service role client
+    const { data: invitation, error: inviteError } = await supabaseAdmin
       .from("household_invitations")
       .insert({
         household_id: householdId,
@@ -95,8 +102,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (inviteError || !invitation) {
+      console.error("Invitation insert error:", JSON.stringify(inviteError, null, 2));
       return NextResponse.json(
-        { error: "Error al crear la invitación" },
+        { error: inviteError?.message || "Error al crear la invitación" },
         { status: 500 }
       );
     }
@@ -105,9 +113,8 @@ export async function POST(request: NextRequest) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const inviteUrl = `${siteUrl}/invite/accept?token=${invitation.token}`;
 
-    // Send invitation email via Supabase
-    // We use generateLink to create a magic link and customize the email
-    const { error: emailError } = await supabase.auth.admin.generateLink({
+    // Send invitation email via service role client
+    const { error: emailError } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
       email: email.toLowerCase(),
       options: {
@@ -116,7 +123,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (emailError) {
-      console.error("Error sending invitation email:", emailError);
+      console.error("Email send error:", JSON.stringify(emailError, null, 2));
       // Don't fail the request - invitation was created, user can use the link directly
     }
 
@@ -125,9 +132,9 @@ export async function POST(request: NextRequest) {
       message: "Invitación enviada correctamente",
     });
   } catch (error) {
-    console.error("Error in invite route:", error);
+    console.error("Error in invite route:", error instanceof Error ? error.message : error);
     return NextResponse.json(
-      { error: "Error interno del servidor" },
+      { error: error instanceof Error ? error.message : "Error interno del servidor" },
       { status: 500 }
     );
   }
