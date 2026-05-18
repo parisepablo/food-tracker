@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
       total_quantity_needed_grams: number;
     }> = [];
 
-    for (const [foodId, ingredient] of ingredientMap.entries()) {
+    for (const [foodId, ingredient] of Array.from(ingredientMap.entries())) {
       const pantryQuantity = pantryMap.get(foodId) || 0;
       const netQuantity = ingredient.total_quantity_grams - pantryQuantity;
 
