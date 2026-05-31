@@ -116,6 +116,35 @@ export async function POST(request: NextRequest) {
       .update({ status: "accepted" })
       .eq("id", invitation.id);
 
+    // Clean up auto-created solo households (from the old bug)
+    const { data: userMemberships } = await supabase
+      .from("household_members")
+      .select("household_id, role")
+      .eq("user_id", user.id);
+
+    if (userMemberships) {
+      for (const membership of userMemberships) {
+        // Skip the household they were just invited to
+        if (membership.household_id === invitation.household_id) continue;
+
+        // If they are admin of another solo household, it's likely auto-created
+        if (membership.role === "admin") {
+          const { data: otherMembers } = await supabase
+            .from("household_members")
+            .select("id")
+            .eq("household_id", membership.household_id)
+            .neq("user_id", user.id);
+
+          if (!otherMembers || otherMembers.length === 0) {
+            await supabase
+              .from("households")
+              .delete()
+              .eq("id", membership.household_id);
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: "Te has unido al hogar correctamente",

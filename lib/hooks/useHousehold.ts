@@ -18,9 +18,10 @@ export function useHousehold() {
         .from("household_members")
         .select("household_id, role, households(*)")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error("No household");
 
       return {
         household: data.households as Household,
@@ -44,7 +45,7 @@ export function useHouseholdMembers() {
         .from("household_members")
         .select("household_id")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (!memberData) throw new Error("No household found");
 

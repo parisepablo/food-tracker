@@ -14,17 +14,28 @@ AS $$
 DECLARE
   new_household_id UUID;
 BEGIN
-  -- Only run when email is being confirmed for the first time
-  IF (NEW.email_confirmed_at IS NOT NULL AND OLD.email_confirmed_at IS NULL) THEN
-    -- Create household
-    INSERT INTO public.households (name)
-    VALUES (split_part(NEW.email, '@', 1) || '''s household')
-    RETURNING id INTO new_household_id;
+    -- Only run when email is being confirmed for the first time
+    IF (NEW.email_confirmed_at IS NOT NULL AND OLD.email_confirmed_at IS NULL) THEN
+      -- Check if user has a pending invitation to an existing household
+      IF EXISTS (
+        SELECT 1 FROM public.household_invitations
+        WHERE LOWER(email) = LOWER(NEW.email)
+        AND status = 'pending'
+        AND expires_at > NOW()
+      ) THEN
+        -- Don't create a household, user will join via invitation
+        RETURN NEW;
+      END IF;
 
-    -- Add user as admin
-    INSERT INTO public.household_members (household_id, user_id, role)
-    VALUES (new_household_id, NEW.id, 'admin');
-  END IF;
+      -- Create household
+      INSERT INTO public.households (name)
+      VALUES (split_part(NEW.email, '@', 1) || '''s household')
+      RETURNING id INTO new_household_id;
+
+      -- Add user as admin
+      INSERT INTO public.household_members (household_id, user_id, role)
+      VALUES (new_household_id, NEW.id, 'admin');
+    END IF;
 
   RETURN NEW;
 END;
