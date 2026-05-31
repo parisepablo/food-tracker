@@ -1,18 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   LayoutDashboard,
   Calendar,
   ChefHat,
   ShoppingCart,
   Settings,
-  Menu,
   UtensilsCrossed,
 } from "lucide-react";
 
@@ -28,19 +24,20 @@ const settingsNavigation = [
   { name: "Configuración", href: "/settings/household", icon: Settings },
 ];
 
-interface NavItemProps {
+function NavItem({
+  href,
+  icon: Icon,
+  children,
+  isActive,
+}: {
   href: string;
   icon: React.ElementType;
   children: React.ReactNode;
   isActive: boolean;
-  onClick?: () => void;
-}
-
-function NavItem({ href, icon: Icon, children, isActive, onClick }: NavItemProps) {
+}) {
   return (
     <Link
       href={href}
-      onClick={onClick}
       className={cn(
         "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
         isActive
@@ -62,7 +59,7 @@ function NavItem({ href, icon: Icon, children, isActive, onClick }: NavItemProps
   );
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent() {
   const pathname = usePathname();
 
   return (
@@ -83,7 +80,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               href={item.href}
               icon={item.icon}
               isActive={pathname === item.href || pathname.startsWith(`${item.href}/`)}
-              onClick={onNavigate}
             >
               {item.name}
             </NavItem>
@@ -98,7 +94,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               href={item.href}
               icon={item.icon}
               isActive={pathname === item.href || pathname.startsWith(`${item.href}/`)}
-              onClick={onNavigate}
             >
               {item.name}
             </NavItem>
@@ -110,31 +105,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function Sidebar() {
-  const [open, setOpen] = useState(false);
-
   return (
-    <>
-      {/* Mobile Sidebar */}
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="fixed left-4 top-4 z-40 lg:hidden h-10 w-10 rounded-xl"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle Sidebar</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-64 border-r border-border/50 p-0 bg-background">
-          <SidebarContent onNavigate={() => setOpen(false)} />
-        </SheetContent>
-      </Sheet>
-
-      {/* Desktop Sidebar */}
-      <aside className="hidden w-64 flex-col border-r border-border/50 bg-background/50 backdrop-blur-xl lg:flex">
-        <SidebarContent />
-      </aside>
-    </>
+    <aside className="hidden w-64 flex-col border-r border-border/50 bg-background/50 backdrop-blur-xl lg:flex">
+      <SidebarContent />
+    </aside>
   );
 }
