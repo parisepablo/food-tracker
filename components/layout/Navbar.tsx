@@ -158,8 +158,8 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
                 <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72 p-0 bg-background border-l border-border/50">
-              <div className="flex h-full flex-col">
+            <SheetContent side="right" className="w-72 sm:max-w-xs">
+              <div className="flex h-full flex-col -m-6 pt-10">
                 {/* Mobile profile header */}
                 <div className="border-b border-border/50 p-5">
                   <div className="flex items-center gap-3">
