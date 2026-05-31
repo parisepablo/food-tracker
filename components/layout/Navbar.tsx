@@ -58,12 +58,12 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/50 bg-background/60 px-6 backdrop-blur-xl lg:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/50 bg-background/60 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="flex flex-1 items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h2 className="text-base font-semibold text-foreground">{householdName}</h2>
-          <Separator orientation="vertical" className="h-4 bg-border/50" />
-          <span className="hidden text-sm text-muted-foreground sm:inline-block">
+        <div className="flex items-center gap-3">
+          <h2 className="hidden text-base font-semibold text-foreground lg:block">{householdName}</h2>
+          <Separator orientation="vertical" className="hidden h-4 bg-border/50 lg:block" />
+          <span className="text-sm text-muted-foreground">
             Food Tracker
           </span>
         </div>

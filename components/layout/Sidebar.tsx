@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -27,20 +28,19 @@ const settingsNavigation = [
   { name: "Configuración", href: "/settings/household", icon: Settings },
 ];
 
-function NavItem({
-  href,
-  icon: Icon,
-  children,
-  isActive,
-}: {
+interface NavItemProps {
   href: string;
   icon: React.ElementType;
   children: React.ReactNode;
   isActive: boolean;
-}) {
+  onClick?: () => void;
+}
+
+function NavItem({ href, icon: Icon, children, isActive, onClick }: NavItemProps) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={cn(
         "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
         isActive
@@ -62,7 +62,7 @@ function NavItem({
   );
 }
 
-function SidebarContent() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -83,6 +83,7 @@ function SidebarContent() {
               href={item.href}
               icon={item.icon}
               isActive={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+              onClick={onNavigate}
             >
               {item.name}
             </NavItem>
@@ -97,6 +98,7 @@ function SidebarContent() {
               href={item.href}
               icon={item.icon}
               isActive={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+              onClick={onNavigate}
             >
               {item.name}
             </NavItem>
@@ -108,10 +110,12 @@ function SidebarContent() {
 }
 
 export function Sidebar() {
+  const [open, setOpen] = useState(false);
+
   return (
     <>
       {/* Mobile Sidebar */}
-      <Sheet>
+      <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button
             variant="ghost"
@@ -123,7 +127,7 @@ export function Sidebar() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-64 border-r border-border/50 p-0 bg-background">
-          <SidebarContent />
+          <SidebarContent onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
 
