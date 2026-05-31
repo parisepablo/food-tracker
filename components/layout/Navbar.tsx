@@ -184,10 +184,10 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
                       <img
                         src={avatarUrl}
                         alt={displayName}
-                        className="h-11 w-11 rounded-full object-cover ring-2 ring-[#34d399]/30"
+                        className="h-11 w-11 rounded-full object-cover ring-2 ring-[#f5b041]/30"
                       />
                     ) : (
-                      <div className="h-11 w-11 rounded-full bg-[#34d399]/15 flex items-center justify-center text-sm font-bold text-[#34d399] ring-2 ring-[#34d399]/30">
+                      <div className="h-11 w-11 rounded-full bg-[#f5b041]/15 flex items-center justify-center text-sm font-bold text-[#f5b041] ring-2 ring-[#f5b041]/30">
                         {getInitials(displayName)}
                       </div>
                     )}
@@ -211,18 +211,18 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
                           className={cn(
                             "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                             active
-                              ? "bg-[#34d399]/10 text-[#34d399]"
+                              ? "bg-[#f5b041]/10 text-[#f5b041]"
                               : "text-white/60 hover:bg-white/5 hover:text-white"
                           )}
                         >
                           <item.icon
                             className={cn(
                               "h-4 w-4",
-                              active ? "text-[#34d399]" : "text-white/50 group-hover:text-white"
+                              active ? "text-[#f5b041]" : "text-white/50 group-hover:text-white"
                             )}
                           />
                           {item.name}
-                          {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#34d399]" />}
+                          {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#f5b041]" />}
                         </Link>
                       );
                     })}
@@ -242,18 +242,18 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
                           className={cn(
                             "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                             active
-                              ? "bg-[#34d399]/10 text-[#34d399]"
+                              ? "bg-[#f5b041]/10 text-[#f5b041]"
                               : "text-white/60 hover:bg-white/5 hover:text-white"
                           )}
                         >
                           <item.icon
                             className={cn(
                               "h-4 w-4",
-                              active ? "text-[#34d399]" : "text-white/50 group-hover:text-white"
+                              active ? "text-[#f5b041]" : "text-white/50 group-hover:text-white"
                             )}
                           />
                           {item.name}
-                          {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#34d399]" />}
+                          {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#f5b041]" />}
                         </Link>
                       );
                     })}

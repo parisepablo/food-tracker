@@ -10,7 +10,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 160 84% 39%;
+    --primary: 43 96% 56%;
     --primary-foreground: 222 47% 6%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
@@ -22,7 +22,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217 33% 20%;
     --input: 217 33% 20%;
-    --ring: 160 84% 39%;
+    --ring: 43 96% 56%;
     --radius: 0.75rem;
   }
 }
@@ -54,7 +54,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
   .text-gradient {
-    background: linear-gradient(135deg, #34d399 0%, #2dd4bf 100%);
+    background: linear-gradient(135deg, #f5b041 0%, #f39c12 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -63,7 +63,7 @@
     background: linear-gradient(180deg, hsl(222 47% 6%) 0%, hsl(222 47% 8%) 100%);
   }
   .shadow-glow {
-    box-shadow: 0 0 20px rgba(52, 211, 153, 0.15);
+    box-shadow: 0 0 20px rgba(245, 176, 65, 0.15);
   }
   .shadow-card {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
