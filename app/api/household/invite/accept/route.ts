@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -28,14 +29,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Use service role client to bypass RLS and reliably read/update invitations
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
     // Find the invitation
-    const { data: invitation, error: inviteError } = await supabase
+    const { data: invitation, error: inviteError } = await supabaseAdmin
       .from("household_invitations")
       .select("*")
       .eq("token", token)
       .single();
 
     if (inviteError || !invitation) {
+      console.error("Invitation lookup error:", inviteError);
       return NextResponse.json(
         { error: "La invitación no existe o ya fue utilizada" },
         { status: 404 }
@@ -50,8 +58,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is already a member (idempotent)
-    const { data: existingMember } = await supabase
+    // Check if user is already a member of the target household
+    const { data: existingMember } = await supabaseAdmin
       .from("household_members")
       .select("id")
       .eq("household_id", invitation.household_id)
@@ -59,9 +67,9 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (existingMember) {
-      // Ensure invitation is marked as accepted if still pending
+      // Ensure invitation is marked as accepted
       if (invitation.status === "pending") {
-        await supabase
+        await supabaseAdmin
           .from("household_invitations")
           .update({ status: "accepted" })
           .eq("id", invitation.id);
@@ -73,18 +81,35 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check invitation status
-    if (invitation.status !== "pending") {
-      return NextResponse.json(
-        { error: "La invitación no existe o ya fue utilizada" },
-        { status: 400 }
-      );
+    // If invitation is already accepted but user is not a member, try to add them
+    // (handles edge cases from previous bugs)
+    if (invitation.status === "accepted") {
+      const { error: memberError } = await supabaseAdmin
+        .from("household_members")
+        .insert({
+          household_id: invitation.household_id,
+          user_id: user.id,
+          role: "member",
+        });
+
+      if (memberError) {
+        console.error("Error adding member to accepted invite:", memberError);
+        return NextResponse.json(
+          { error: "Error al unirse al hogar" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Te has unido al hogar correctamente",
+      });
     }
 
     // Check if expired
-    if (new Date(invitation.expires_at) < new Date()) {
-      // Mark as expired
-      await supabase
+    if (invitation.status === "expired" || new Date(invitation.expires_at) < new Date()) {
+      // Mark as expired just in case
+      await supabaseAdmin
         .from("household_invitations")
         .update({ status: "expired" })
         .eq("id", invitation.id);
@@ -95,8 +120,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check invitation status
+    if (invitation.status !== "pending") {
+      return NextResponse.json(
+        { error: "La invitación no existe o ya fue utilizada" },
+        { status: 400 }
+      );
+    }
+
     // Add user to household
-    const { error: memberError } = await supabase
+    const { error: memberError } = await supabaseAdmin
       .from("household_members")
       .insert({
         household_id: invitation.household_id,
@@ -113,13 +146,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark invitation as accepted
-    await supabase
+    await supabaseAdmin
       .from("household_invitations")
       .update({ status: "accepted" })
       .eq("id", invitation.id);
 
     // Clean up auto-created solo households (from the old bug)
-    const { data: userMemberships } = await supabase
+    const { data: userMemberships } = await supabaseAdmin
       .from("household_members")
       .select("household_id, role")
       .eq("user_id", user.id);
@@ -131,14 +164,14 @@ export async function POST(request: NextRequest) {
 
         // If they are admin of another solo household, it's likely auto-created
         if (membership.role === "admin") {
-          const { data: otherMembers } = await supabase
+          const { data: otherMembers } = await supabaseAdmin
             .from("household_members")
             .select("id")
             .eq("household_id", membership.household_id)
             .neq("user_id", user.id);
 
           if (!otherMembers || otherMembers.length === 0) {
-            await supabase
+            await supabaseAdmin
               .from("households")
               .delete()
               .eq("id", membership.household_id);
