@@ -7,7 +7,8 @@ import { logout } from "@/lib/utils/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
-import { Settings, LogOut } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+import { Settings, LogOut, ChevronDown } from "lucide-react";
 
 function getInitials(name: string | null | undefined) {
   if (!name) return "?";
@@ -57,12 +58,12 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border/50 bg-background/60 px-6 backdrop-blur-xl lg:px-8">
       <div className="flex flex-1 items-center justify-between">
         <div className="flex items-center gap-4">
-          <h2 className="text-lg font-semibold">{householdName}</h2>
-          <Separator orientation="vertical" className="h-4" />
-          <span className="text-sm text-muted-foreground hidden sm:inline-block">
+          <h2 className="text-base font-semibold text-foreground">{householdName}</h2>
+          <Separator orientation="vertical" className="h-4 bg-border/50" />
+          <span className="hidden text-sm text-muted-foreground sm:inline-block">
             Food Tracker
           </span>
         </div>
@@ -70,44 +71,44 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
           <div className="relative" ref={menuRef}>
             <Button
               variant="ghost"
-              className="flex items-center gap-2 h-9 px-2"
+              className="flex items-center gap-2.5 h-10 px-2.5 rounded-xl hover:bg-accent"
               onClick={() => setOpen(!open)}
             >
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt={displayName}
-                  className="h-7 w-7 rounded-full object-cover"
+                  className="h-8 w-8 rounded-full object-cover ring-2 ring-primary/20"
                 />
               ) : (
-                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary ring-2 ring-primary/20">
                   {getInitials(displayName)}
                 </div>
               )}
               <span className="hidden sm:inline-block text-sm font-medium max-w-[140px] truncate">
                 {displayName}
               </span>
+              <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
             </Button>
             {open && (
-              <div className="absolute right-0 mt-2 w-56 rounded-md border bg-popover shadow-lg p-1 z-50">
-                <div className="px-3 py-2">
-                  <p className="text-sm font-medium">{displayName}</p>
-                  <p className="text-xs text-muted-foreground">{userEmail}</p>
+              <div className="absolute right-0 mt-2 w-60 rounded-xl border border-border/50 bg-card/95 backdrop-blur-xl shadow-card p-1.5 z-50 animate-fade-in">
+                <div className="px-3 py-2.5">
+                  <p className="text-sm font-semibold">{displayName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{userEmail}</p>
                 </div>
-                <Separator />
+                <Separator className="bg-border/50" />
                 <Link
                   href="/settings/household"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors mt-1"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-4 w-4 text-muted-foreground" />
                   Configuración del hogar
                 </Link>
-                <Separator />
-                <form action={logout}>
+                <form action={logout} className="mt-0.5">
                   <button
                     type="submit"
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive rounded-sm hover:bg-destructive/10 transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-destructive rounded-lg hover:bg-destructive/10 transition-colors text-left"
                   >
                     <LogOut className="h-4 w-4" />
                     Cerrar sesión
