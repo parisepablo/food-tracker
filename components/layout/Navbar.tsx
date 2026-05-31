@@ -92,7 +92,7 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
         <div className="flex items-center gap-3">
           <h2 className="hidden text-base font-semibold text-foreground lg:block">{householdName}</h2>
           <Separator orientation="vertical" className="hidden h-4 bg-border/50 lg:block" />
-          <span className="text-sm text-muted-foreground">Food Tracker</span>
+          <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Food Tracker</Link>
         </div>
 
         {/* Right */}
