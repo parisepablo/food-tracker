@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Home } from "lucide-react";
 import Link from "next/link";
 
 export function AcceptInviteContent() {
@@ -13,8 +13,9 @@ export function AcceptInviteContent() {
   const router = useRouter();
   const supabase = createClient();
   const token = searchParams.get("token");
+  const didSubmit = useRef(false);
 
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<"checking" | "ready" | "loading" | "success" | "error">("checking");
   const [message, setMessage] = useState("");
   const [needsLogin, setNeedsLogin] = useState(false);
 
@@ -25,41 +26,46 @@ export function AcceptInviteContent() {
       return;
     }
 
-    const acceptInvite = async () => {
+    const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-
       if (!user) {
         setNeedsLogin(true);
-        setStatus("error");
-        setMessage("Debes iniciar sesión para aceptar la invitación");
-        return;
       }
-
-      try {
-        const response = await fetch("/api/household/invite/accept", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          setStatus("success");
-          setMessage(data.message || "Te has unido al hogar correctamente");
-          setTimeout(() => router.push("/dashboard"), 2000);
-        } else {
-          setStatus("error");
-          setMessage(data.error || "Error al aceptar la invitación");
-        }
-      } catch {
-        setStatus("error");
-        setMessage("Error de conexión. Intenta nuevamente.");
-      }
+      setStatus("ready");
     };
 
-    acceptInvite();
-  }, [token, supabase, router]);
+    checkAuth();
+  }, [token, supabase]);
+
+  const handleAccept = async () => {
+    if (didSubmit.current) return;
+    didSubmit.current = true;
+    setStatus("loading");
+
+    try {
+      const response = await fetch("/api/household/invite/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStatus("success");
+        setMessage(data.message || "Te has unido al hogar correctamente");
+        setTimeout(() => router.push("/dashboard"), 2000);
+      } else {
+        setStatus("error");
+        setMessage(data.error || "Error al aceptar la invitación");
+        didSubmit.current = false; // Allow retry on error
+      }
+    } catch {
+      setStatus("error");
+      setMessage("Error de conexión. Intenta nuevamente.");
+      didSubmit.current = false;
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
@@ -67,10 +73,45 @@ export function AcceptInviteContent() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Invitación al hogar</CardTitle>
           <CardDescription>
-            Acepta la invitación para unirte al hogar
+            {status === "ready" && !needsLogin
+              ? "Te han invitado a unirte a un hogar"
+              : "Acepta la invitación para unirte al hogar"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-center">
+          {status === "checking" && (
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-muted-foreground">Verificando invitación...</p>
+            </div>
+          )}
+
+          {status === "ready" && (
+            <div className="flex flex-col items-center gap-4">
+              <Home className="h-12 w-12 text-primary" />
+              {needsLogin ? (
+                <>
+                  <p className="text-lg font-medium">Debes iniciar sesión para aceptar la invitación</p>
+                  <div className="flex flex-col gap-2 w-full">
+                    <Link href={`/register?redirect=/invite/accept?token=${token}`}>
+                      <Button className="w-full">Crear cuenta</Button>
+                    </Link>
+                    <Link href={`/login?redirect=/invite/accept?token=${token}`}>
+                      <Button variant="outline" className="w-full">Iniciar sesión</Button>
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-medium">¿Querés unirte a este hogar?</p>
+                  <Button onClick={handleAccept} className="w-full">
+                    Aceptar invitación
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+
           {status === "loading" && (
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -92,20 +133,9 @@ export function AcceptInviteContent() {
             <div className="flex flex-col items-center gap-4">
               <XCircle className="h-12 w-12 text-destructive" />
               <p className="text-lg font-medium text-destructive">{message}</p>
-              {needsLogin ? (
-                <div className="flex flex-col gap-2 w-full">
-                  <Link href={`/register?redirect=/invite/accept?token=${token}`}>
-                    <Button className="w-full">Crear cuenta</Button>
-                  </Link>
-                  <Link href={`/login?redirect=/invite/accept?token=${token}`}>
-                    <Button variant="outline" className="w-full">Iniciar sesión</Button>
-                  </Link>
-                </div>
-              ) : (
-                <Link href="/dashboard">
-                  <Button variant="outline">Ir al dashboard</Button>
-                </Link>
-              )}
+              <Link href="/dashboard">
+                <Button variant="outline">Ir al dashboard</Button>
+              </Link>
             </div>
           )}
         </CardContent>

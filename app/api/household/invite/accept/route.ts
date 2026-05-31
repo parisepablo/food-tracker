@@ -42,6 +42,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user's email matches invitation email
+    if (user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: "Esta invitación fue enviada a otro email" },
+        { status: 403 }
+      );
+    }
+
+    // Check if user is already a member (idempotent)
+    const { data: existingMember } = await supabase
+      .from("household_members")
+      .select("id")
+      .eq("household_id", invitation.household_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingMember) {
+      // Ensure invitation is marked as accepted if still pending
+      if (invitation.status === "pending") {
+        await supabase
+          .from("household_invitations")
+          .update({ status: "accepted" })
+          .eq("id", invitation.id);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Ya eres miembro de este hogar",
+      });
+    }
+
     // Check invitation status
     if (invitation.status !== "pending") {
       return NextResponse.json(
@@ -60,35 +91,6 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         { error: "La invitación ha expirado" },
-        { status: 400 }
-      );
-    }
-
-    // Check if user's email matches invitation email
-    if (user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
-      return NextResponse.json(
-        { error: "Esta invitación fue enviada a otro email" },
-        { status: 403 }
-      );
-    }
-
-    // Check if user is already a member
-    const { data: existingMember } = await supabase
-      .from("household_members")
-      .select("id")
-      .eq("household_id", invitation.household_id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (existingMember) {
-      // Mark invitation as accepted anyway
-      await supabase
-        .from("household_invitations")
-        .update({ status: "accepted" })
-        .eq("id", invitation.id);
-
-      return NextResponse.json(
-        { error: "Ya eres miembro de este hogar" },
         { status: 400 }
       );
     }
