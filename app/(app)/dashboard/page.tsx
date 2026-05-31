@@ -36,10 +36,22 @@ export default function DashboardPage() {
         .select("user_id")
         .eq("household_id", memberData.household_id);
 
+      const memberIds = (members || []).map((m) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", memberIds.length > 0 ? memberIds : [user.id]);
+
+      const profileMap: Record<string, string> = {};
+      profiles?.forEach((p) => {
+        profileMap[p.id] = p.display_name || `Usuario ${p.id.slice(0, 8)}`;
+      });
+
       return {
         householdId: memberData.household_id,
         activeMealTypes: (memberData.households?.active_meal_types as MealType[]) || ["breakfast", "lunch", "dinner", "snack"],
         members: members || [],
+        profileMap,
       };
     },
   });
@@ -159,7 +171,7 @@ export default function DashboardPage() {
 
     return {
       userId,
-      memberName: `Usuario ${userId.slice(0, 8)}`,
+      memberName: householdData?.profileMap?.[userId] || `Usuario ${userId.slice(0, 8)}`,
       weekMacros: roundMacros(weekMacros),
       dailyAverage: roundMacros(dailyAverage),
       goal,

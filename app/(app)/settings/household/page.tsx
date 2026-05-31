@@ -24,6 +24,25 @@ const mealTypeLabels: Record<MealType, string> = {
 
 const allMealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
+interface MemberWithProfile {
+  id: string;
+  user_id: string;
+  role: string;
+  joined_at: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+function getInitials(name: string | null) {
+  if (!name) return "?";
+  const parts = name.split(" ");
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
 export default function HouseholdSettingsPage() {
   const { data: householdData, isLoading } = useHousehold();
   const { user: userData, loading: userLoading } = useUser();
@@ -45,6 +64,10 @@ export default function HouseholdSettingsPage() {
     carbs_goal: "",
     fat_goal: "",
   });
+
+  // Profile state
+  const [profileName, setProfileName] = useState("");
+  const [profileAvatar, setProfileAvatar] = useState("");
 
   // Sync household name when data loads
   useEffect(() => {
@@ -88,33 +111,60 @@ export default function HouseholdSettingsPage() {
 
   const activeMealTypes = (householdData?.household?.active_meal_types as MealType[]) || allMealTypes;
 
-  // Fetch household members
-  const { data: members } = useQuery({
+  // Fetch household members via server API
+  const { data: members, isLoading: membersLoading } = useQuery({
     queryKey: ["household-members"],
     queryFn: async () => {
-      if (!householdData?.household?.id) return [];
-
-      const { data, error } = await supabase
-        .from("household_members")
-        .select("id, user_id, role, joined_at")
-        .eq("household_id", householdData.household.id);
-
-      if (error) return [];
-
-      // Fetch emails for each member
-      const membersWithEmails = await Promise.all(
-        (data || []).map(async (member) => {
-          const { data: userData } = await supabase.auth.admin.getUserById(member.user_id);
-          return {
-            ...member,
-            email: userData?.user?.email || "Usuario desconocido",
-          };
-        })
-      );
-
-      return membersWithEmails;
+      const response = await fetch("/api/household/members");
+      if (!response.ok) return [];
+      const data = await response.json();
+      return (data.members || []) as MemberWithProfile[];
     },
     enabled: !!householdData?.household?.id,
+  });
+
+  // Fetch current user profile
+  const { data: userProfile } = useQuery({
+    queryKey: ["user-profile", userData?.id],
+    queryFn: async () => {
+      if (!userData?.id) return null;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userData.id)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!userData?.id,
+  });
+
+  // Sync profile state
+  useEffect(() => {
+    if (userProfile) {
+      setProfileName(userProfile.display_name || "");
+      setProfileAvatar(userProfile.avatar_url || "");
+    }
+  }, [userProfile]);
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async () => {
+      if (!userData?.id) throw new Error("No user");
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userData.id,
+          display_name: profileName.trim() || null,
+          avatar_url: profileAvatar.trim() || null,
+          updated_at: new Date().toISOString(),
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["household-members"] });
+    },
   });
 
   // Fetch invitations
@@ -402,6 +452,45 @@ export default function HouseholdSettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Profile Card */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Mi perfil</CardTitle>
+            <CardDescription>Personalizá cómo te ven los demás miembros del hogar</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="profileName">Nombre visible</Label>
+                <Input
+                  id="profileName"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Ej: María García"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profileAvatar">URL de avatar (opcional)</Label>
+                <Input
+                  id="profileAvatar"
+                  value={profileAvatar}
+                  onChange={(e) => setProfileAvatar(e.target.value)}
+                  placeholder="https://..."
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={() => updateProfileMutation.mutate()}
+              disabled={updateProfileMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              {updateProfileMutation.isPending ? "Guardando..." : "Guardar perfil"}
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Objetivos nutricionales</CardTitle>
@@ -483,19 +572,40 @@ export default function HouseholdSettingsPage() {
             <div>
               <h3 className="text-sm font-medium mb-3">Miembros actuales</h3>
               <div className="space-y-2">
+                {membersLoading && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Cargando miembros...
+                  </div>
+                )}
                 {members?.map((member) => (
                   <div
                     key={member.id}
                     className="flex items-center justify-between rounded-lg border p-3"
                   >
                     <div className="flex items-center gap-3">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      {member.avatar_url ? (
+                        <img
+                          src={member.avatar_url}
+                          alt={member.display_name || member.email}
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
+                          {getInitials(member.display_name || member.email)}
+                        </div>
+                      )}
                       <div>
-                        <p className="text-sm font-medium">{member.email}</p>
+                        <p className="text-sm font-medium">
+                          {member.display_name || member.email}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {member.role === "admin" ? "Administrador" : "Miembro"} · Se unió el{" "}
                           {new Date(member.joined_at).toLocaleDateString("es-AR")}
                         </p>
+                        {member.display_name && (
+                          <p className="text-xs text-muted-foreground">{member.email}</p>
+                        )}
                       </div>
                     </div>
                     <Badge variant={member.role === "admin" ? "default" : "secondary"}>
@@ -503,7 +613,7 @@ export default function HouseholdSettingsPage() {
                     </Badge>
                   </div>
                 ))}
-                {(!members || members.length === 0) && (
+                {!membersLoading && (!members || members.length === 0) && (
                   <p className="text-sm text-muted-foreground py-2">No hay miembros</p>
                 )}
               </div>

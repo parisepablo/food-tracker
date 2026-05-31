@@ -77,3 +77,11 @@ export interface PantryWithFood extends Pantry {
 
 // Household invitations
 export type HouseholdInvitation = Tables<"household_invitations">;
+
+// Profile
+export type Profile = Tables<"profiles">;
+
+// Household member with profile
+export interface HouseholdMemberWithProfile extends HouseholdMember {
+  profile?: Profile | null;
+}
