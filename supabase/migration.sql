@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS recipes (
   description TEXT,
   servings INTEGER NOT NULL CHECK (servings > 0),
   image_url TEXT,
+  video_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

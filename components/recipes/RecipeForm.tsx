@@ -33,6 +33,7 @@ export function RecipeForm({ recipe, onSuccess }: RecipeFormProps) {
   const [name, setName] = useState(recipe?.name || "");
   const [description, setDescription] = useState(recipe?.description || "");
   const [servings, setServings] = useState(recipe?.servings || 4);
+  const [videoUrl, setVideoUrl] = useState(recipe?.video_url || "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [ingredients, setIngredients] = useState<IngredientState[]>(
     recipe?.recipe_ingredients?.map((ri) => ({
@@ -191,6 +192,7 @@ export function RecipeForm({ recipe, onSuccess }: RecipeFormProps) {
       description: description || null,
       servings,
       image_url: recipe?.image_url || null,
+      video_url: videoUrl.trim() || null,
       ingredients: ingredients.map((i) => ({
         food_id: i.food.id,
         quantity_grams: i.quantity,
@@ -249,6 +251,7 @@ export function RecipeForm({ recipe, onSuccess }: RecipeFormProps) {
             description: description || null,
             servings,
             image_url: imageUrl,
+            video_url: videoUrl.trim() || null,
           })
           .eq("id", recipe.id);
 
@@ -267,6 +270,7 @@ export function RecipeForm({ recipe, onSuccess }: RecipeFormProps) {
             description: description || null,
             servings,
             image_url: imageUrl,
+            video_url: videoUrl.trim() || null,
             household_id: memberData.household_id,
             created_by: user.id,
           })
@@ -384,6 +388,21 @@ export function RecipeForm({ recipe, onSuccess }: RecipeFormProps) {
                 Imagen actual se mantendrá
               </p>
             )}
+          </div>
+
+          <div>
+            <Label htmlFor="videoUrl">Video de YouTube</Label>
+            <Input
+              id="videoUrl"
+              type="url"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=... o https://youtu.be/..."
+              className="mt-1"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Pegá el link de un video de YouTube o un Short
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -56,6 +56,7 @@ export const recipeSchema = z.object({
   description: z.string().nullable().optional(),
   servings: z.number().min(1, "Las porciones deben ser al menos 1"),
   image_url: z.string().nullable().optional(),
+  video_url: z.string().nullable().optional(),
   ingredients: z.array(recipeIngredientSchema).min(1, "Se requiere al menos un ingrediente"),
 });
 

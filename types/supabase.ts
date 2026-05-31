@@ -474,6 +474,7 @@ export type Database = {
           image_url: string | null;
           name: string;
           servings: number;
+          video_url: string | null;
         };
         Insert: {
           created_at?: string;
@@ -484,6 +485,7 @@ export type Database = {
           image_url?: string | null;
           name: string;
           servings: number;
+          video_url?: string | null;
         };
         Update: {
           created_at?: string;
@@ -494,6 +496,7 @@ export type Database = {
           image_url?: string | null;
           name?: string;
           servings?: number;
+          video_url?: string | null;
         };
         Relationships: [
           {

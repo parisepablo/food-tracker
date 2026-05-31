@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRecipe } from "@/lib/hooks/useRecipes";
 import { RecipeForm } from "@/components/recipes/RecipeForm";
 import { MacroSummary } from "@/components/recipes/MacroSummary";
+import { YouTubeEmbed } from "@/components/recipes/YouTubeEmbed";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -182,16 +183,21 @@ export default function RecipeDetailPage() {
         </div>
       </div>
 
-      {recipe.image_url && (
-        <div className="relative h-64 w-full overflow-hidden rounded-lg">
-          <Image
-            src={recipe.image_url}
-            alt={recipe.name}
-            fill
-            className="object-cover"
-          />
-        </div>
-      )}
+      <div className="grid gap-6 md:grid-cols-2">
+        {recipe.image_url && (
+          <div className="relative h-64 w-full overflow-hidden rounded-lg">
+            <Image
+              src={recipe.image_url}
+              alt={recipe.name}
+              fill
+              className="object-cover"
+            />
+          </div>
+        )}
+        {recipe.video_url && (
+          <YouTubeEmbed url={recipe.video_url} title={`${recipe.name} - video`} />
+        )}
+      </div>
 
       {recipe.description && (
         <Card>
