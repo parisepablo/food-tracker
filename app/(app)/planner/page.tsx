@@ -8,10 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { WeeklyCalendar } from "@/components/planner/WeeklyCalendar";
 import { AIPlanAdjuster } from "@/components/planner/AIPlanAdjuster";
-import { ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, Check, Sparkles, Settings, ChefHat, ListPlus } from "lucide-react";
 import { usePlanDraftStore } from "@/lib/hooks/useStore";
 import { createClient } from "@/lib/supabase/client";
 import type { MealType } from "@/types";
+
+const allMealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+
+interface ValidationError {
+  type: "error" | "warning";
+  title: string;
+  message: string;
+  action?: { label: string; href: string };
+}
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -19,6 +28,7 @@ export default function PlannerPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [dismissedConflicts, setDismissedConflicts] = useState<string[]>([]);
+  const [validationError, setValidationError] = useState<ValidationError | null>(null);
 
   const {
     weekStart,
@@ -129,8 +139,169 @@ export default function PlannerPage() {
     setIsGenerating(true);
     setDismissedConflicts([]);
     setAIMessage(null);
+    setValidationError(null);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setValidationError({ type: "error", title: "No autenticado", message: "Debes iniciar sesión para generar un plan." });
+        setIsGenerating(false);
+        return;
+      }
+
+      // Get household
+      const { data: memberData } = await supabase
+        .from("household_members")
+        .select("household_id, households(active_meal_types)")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!memberData) {
+        setValidationError({ type: "error", title: "Sin hogar", message: "No se encontró un hogar asociado a tu cuenta." });
+        setIsGenerating(false);
+        return;
+      }
+
+      const householdId = memberData.household_id;
+      const activeMealTypes = (memberData.households?.active_meal_types as MealType[]) || allMealTypes;
+      const totalSlots = activeMealTypes.length * 7;
+
+      // 1. Fetch recipes
+      const { data: recipes, error: recipesError } = await supabase
+        .from("recipes")
+        .select(`
+          id,
+          name,
+          recipe_ingredients(
+            food:food_id(
+              id,
+              ingredient_categories(category)
+            )
+          )
+        `)
+        .eq("household_id", householdId);
+
+      if (recipesError) {
+        setValidationError({ type: "error", title: "Error", message: "No se pudieron cargar las recetas. Intentá de nuevo." });
+        setIsGenerating(false);
+        return;
+      }
+
+      // Validation: No recipes at all
+      if (!recipes || recipes.length === 0) {
+        setValidationError({
+          type: "error",
+          title: "No hay recetas",
+          message: "Necesitás crear al menos una receta antes de generar un plan de comidas.",
+          action: { label: "Crear receta", href: "/recipes/new" },
+        });
+        setIsGenerating(false);
+        return;
+      }
+
+      // Build recipe category map
+      const recipeCategories: Record<string, string[]> = {};
+      recipes.forEach((recipe: unknown) => {
+        const r = recipe as {
+          id: string;
+          recipe_ingredients?: Array<{
+            food?: { ingredient_categories?: Array<{ category: string }> };
+          }>;
+        };
+        const cats = new Set<string>();
+        r.recipe_ingredients?.forEach((ri) => {
+          ri.food?.ingredient_categories?.forEach((ic) => {
+            cats.add(ic.category);
+          });
+        });
+        recipeCategories[r.id] = Array.from(cats);
+      });
+
+      // 2. Fetch rules
+      const { data: rules } = await supabase
+        .from("meal_plan_rules")
+        .select("rule_type, rule_config")
+        .eq("household_id", householdId);
+
+      // 3. Validation: Not enough recipes for the week
+      if (recipes.length < totalSlots) {
+        setValidationError({
+          type: "warning",
+          title: "Pocas recetas",
+          message: `Tenés ${recipes.length} receta${recipes.length === 1 ? "" : "s"} pero necesitás al menos ${totalSlots} para llenar la semana (${activeMealTypes.length} comidas × 7 días). Se generarán conflictos donde no haya recetas disponibles.`,
+          action: { label: "Agregar recetas", href: "/recipes/new" },
+        });
+      }
+
+      // 4. Validation: Protein frequency rules
+      const proteinRules = (rules || []).filter((r: unknown) => (r as { rule_type: string }).rule_type === "protein_frequency");
+      for (const rule of proteinRules) {
+        const config = (rule as unknown as { rule_config: { category: string; max_per_week: number } }).rule_config;
+        const matchingRecipes = recipes.filter((r: unknown) => {
+          const id = (r as { id: string }).id;
+          return recipeCategories[id]?.includes(config.category);
+        });
+        if (matchingRecipes.length === 0) {
+          setValidationError({
+            type: "error",
+            title: "Regla imposible de cumplir",
+            message: `Tenés una regla de frecuencia para "${config.category}" pero no hay ninguna receta con esa categoría. El plan no se puede generar.`,
+            action: { label: "Editar reglas", href: "/planner/rules" },
+          });
+          setIsGenerating(false);
+          return;
+        }
+      }
+
+      // 5. Validation: Distribution rules
+      const distributionRules = (rules || []).filter((r: unknown) => (r as { rule_type: string }).rule_type === "distribution");
+      for (const rule of distributionRules) {
+        const config = (rule as unknown as { rule_config: { category: string; allowed_days: string[] } }).rule_config;
+        const matchingRecipes = recipes.filter((r: unknown) => {
+          const id = (r as { id: string }).id;
+          return recipeCategories[id]?.includes(config.category);
+        });
+        if (matchingRecipes.length === 0) {
+          setValidationError({
+            type: "error",
+            title: "Regla imposible de cumplir",
+            message: `Tenés una regla de distribución para "${config.category}" pero no hay ninguna receta con esa categoría. El plan no se puede generar.`,
+            action: { label: "Editar reglas", href: "/planner/rules" },
+          });
+          setIsGenerating(false);
+          return;
+        }
+        if (config.allowed_days.length === 0) {
+          setValidationError({
+            type: "error",
+            title: "Regla inválida",
+            message: `Tenés una regla de distribución para "${config.category}" pero no seleccionaste ningún día permitido. El plan no se puede generar.`,
+            action: { label: "Editar reglas", href: "/planner/rules" },
+          });
+          setIsGenerating(false);
+          return;
+        }
+      }
+
+      // 6. Validation: Variety rule
+      const varietyRules = (rules || []).filter((r: unknown) => (r as { rule_type: string }).rule_type === "variety");
+      if (varietyRules.length > 0) {
+        const maxMinDays = Math.max(...varietyRules.map((r: unknown) => (r as unknown as { rule_config: { min_days_between: number } }).rule_config.min_days_between));
+        // If variety requires no repetition for X days, we need enough unique recipes
+        // Rough check: if recipes < slots, variety will definitely fail for some slots
+        if (recipes.length < totalSlots) {
+          setValidationError({
+            type: "warning",
+            title: "Variedad insuficiente",
+            message: `La regla de variedad requiere ${maxMinDays} días entre repeticiones, pero tenés menos recetas (${recipes.length}) que espacios semanales (${totalSlots}). Algunas comidas podrían repetirse o generar conflictos.`,
+            action: { label: "Agregar recetas", href: "/recipes/new" },
+          });
+        }
+      }
+
+      // If we have a validation warning (not error), let the user decide — but we proceed with the API call anyway and show the warning
+      // Actually, for simplicity, let's proceed with the API call. The validation errors above stop execution, warnings don't.
+
       const weekStartStr = currentWeekStart.toISOString().split("T")[0];
       const response = await fetch("/api/planner/generate", {
         method: "POST",
@@ -141,6 +312,8 @@ export default function PlannerPage() {
       if (!response.ok) {
         const error = await response.json();
         console.error("Failed to generate meal plan:", error);
+        setValidationError({ type: "error", title: "Error al generar", message: error.error || "No se pudo generar el plan. Intentá de nuevo." });
+        setIsGenerating(false);
         return;
       }
 
@@ -148,6 +321,7 @@ export default function PlannerPage() {
       loadFromAPI(result);
     } catch (error) {
       console.error("Error generating meal plan:", error);
+      setValidationError({ type: "error", title: "Error inesperado", message: "Ocurrió un error al generar el plan. Intentá de nuevo más tarde." });
     } finally {
       setIsGenerating(false);
     }
@@ -268,6 +442,25 @@ export default function PlannerPage() {
           </Button>
         </div>
       </div>
+
+      {/* Validation errors */}
+      {validationError && (
+        <Alert variant={validationError.type === "error" ? "destructive" : "default"}>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>{validationError.title}</AlertTitle>
+          <AlertDescription className="flex flex-col gap-2">
+            <span>{validationError.message}</span>
+            {validationError.action && (
+              <Link href={validationError.action.href}>
+                <Button size="sm" variant="outline" className="w-fit">
+                  {validationError.type === "error" ? <ChefHat className="mr-2 h-4 w-4" /> : <ListPlus className="mr-2 h-4 w-4" />}
+                  {validationError.action.label}
+                </Button>
+              </Link>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Conflict alerts */}
       {visibleConflicts.length > 0 && (
