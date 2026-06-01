@@ -66,7 +66,7 @@ export default function PlannerPage() {
           .from("household_members")
           .select("household_id")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
         if (!memberData) return;
 
@@ -75,7 +75,7 @@ export default function PlannerPage() {
           .select("*, meal_plan_entries(*)")
           .eq("household_id", memberData.household_id)
           .eq("week_start", weekStartStr)
-          .single();
+          .maybeSingle();
 
         if (mealPlan?.meal_plan_entries) {
           const formattedEntries = mealPlan.meal_plan_entries.map((entry: {
@@ -115,7 +115,11 @@ export default function PlannerPage() {
           });
         }
       } catch (error) {
-        console.error("Error loading plan:", error);
+        // Only log real errors; ignore transient init issues
+        const msg = (error as Error)?.message || String(error);
+        if (!msg.includes("No API key found") && !msg.includes("PGRST116")) {
+          console.error("Error loading plan:", error);
+        }
       }
     };
 
@@ -154,7 +158,7 @@ export default function PlannerPage() {
         .from("household_members")
         .select("household_id, households(active_meal_types)")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (!memberData) {
         setValidationError({ type: "error", title: "Sin hogar", message: "No se encontró un hogar asociado a tu cuenta." });

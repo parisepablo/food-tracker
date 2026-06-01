@@ -43,7 +43,7 @@ export function IngredientSearch({ onSelect }: IngredientSearchProps) {
       .limit(10);
 
     return foods || [];
-  }, []);
+  }, [supabase]);
 
   // Search query
   const { data: results, isLoading } = useQuery({

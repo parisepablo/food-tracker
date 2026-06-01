@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -105,10 +106,13 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
               onClick={() => setProfileOpen(!profileOpen)}
             >
               {avatarUrl ? (
-                <img
+                <Image
                   src={avatarUrl}
                   alt={displayName}
-                  className="h-8 w-8 rounded-full object-cover ring-2 ring-primary/20"
+                  width={32}
+                  height={32}
+                  className="rounded-full object-cover ring-2 ring-primary/20"
+                  unoptimized
                 />
               ) : (
                 <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary ring-2 ring-primary/20">
@@ -181,10 +185,13 @@ export function Navbar({ userEmail, householdName }: NavbarProps) {
                 <div className="border-b border-white/10 p-5 pt-12">
                   <div className="flex items-center gap-3">
                     {avatarUrl ? (
-                      <img
+                      <Image
                         src={avatarUrl}
                         alt={displayName}
-                        className="h-11 w-11 rounded-full object-cover ring-2 ring-[#f5b041]/30"
+                        width={44}
+                        height={44}
+                        className="rounded-full object-cover ring-2 ring-[#f5b041]/30"
+                        unoptimized
                       />
                     ) : (
                       <div className="h-11 w-11 rounded-full bg-[#f5b041]/15 flex items-center justify-center text-sm font-bold text-[#f5b041] ring-2 ring-[#f5b041]/30">

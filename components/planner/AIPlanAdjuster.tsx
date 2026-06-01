@@ -20,24 +20,30 @@ export function AIPlanAdjuster() {
   const { data: rules } = useQuery({
     queryKey: ["meal-plan-rules"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
 
-      const { data: memberData } = await supabase
-        .from("household_members")
-        .select("household_id")
-        .eq("user_id", user.id)
-        .single();
+        const { data: memberData } = await supabase
+          .from("household_members")
+          .select("household_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-      if (!memberData) throw new Error("No household");
+        if (!memberData) return [];
 
-      const { data, error } = await supabase
-        .from("meal_plan_rules")
-        .select("*")
-        .eq("household_id", memberData.household_id);
+        const { data, error } = await supabase
+          .from("meal_plan_rules")
+          .select("*")
+          .eq("household_id", memberData.household_id);
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        const msg = (error as Error)?.message || String(error);
+        if (msg.includes("No API key found")) return [];
+        throw error;
+      }
     },
     enabled: !!weekStart,
   });

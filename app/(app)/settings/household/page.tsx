@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useHousehold } from "@/lib/hooks/useHousehold";
 import { useUser } from "@/lib/hooks/useUser";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -585,10 +586,13 @@ export default function HouseholdSettingsPage() {
                   >
                     <div className="flex items-center gap-3">
                       {member.avatar_url ? (
-                        <img
+                        <Image
                           src={member.avatar_url}
                           alt={member.display_name || member.email}
-                          className="h-10 w-10 rounded-full object-cover"
+                          width={40}
+                          height={40}
+                          className="rounded-full object-cover"
+                          unoptimized
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">

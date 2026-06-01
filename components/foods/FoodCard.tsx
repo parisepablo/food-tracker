@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,10 +48,13 @@ export function FoodCard({
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
           {food.image_url && (
-            <img
+            <Image
               src={food.image_url}
               alt={food.name}
-              className="h-16 w-16 rounded-md object-cover"
+              width={64}
+              height={64}
+              className="rounded-md object-cover"
+              unoptimized
             />
           )}
           <div className="flex-1 space-y-1">
